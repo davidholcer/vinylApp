@@ -1,147 +1,163 @@
-import java.sql.* ;
+import java.sql.*;
+import java.util.Scanner;
 
-class simpleJDBC
-{
-    public static void main ( String [ ] args ) throws SQLException
-    {
-        // Unique table names.  Either the user supplies a unique identifier as a command line argument, or the program makes one up.
-        String tableName = "";
-        int sqlCode=0;      // Variable to hold SQLCODE
-        String sqlState="00000";  // Variable to hold SQLSTATE
+class SimpleJDBC {
+    private static final String JDBC_URL = "jdbc:db2://winter2024-comp421.cs.mcgill.ca:50000/comp421";
+    private static final String YOUR_USERID = "cs421g14";
+    private static final String YOUR_PASSWORD = "v1nylRecord$";
 
-        if ( args.length > 0 )
-            tableName += args [ 0 ] ;
-        else
-            tableName += "exampletbl";
+    public static void main(String[] args) {
+        String tableName = (args.length > 0) ? args[0] : "exampletbl";
+        Connection con = null;
+        Statement statement = null;
 
-        // Register the driver.  You must register the driver before you can use it.
-        try { DriverManager.registerDriver ( new com.ibm.db2.jcc.DB2Driver() ) ; }
-        catch (Exception cnfe){ System.out.println("Class not found"); }
+        try {
+            DriverManager.registerDriver(new com.ibm.db2.jcc.DB2Driver());
+            con = DriverManager.getConnection(JDBC_URL, YOUR_USERID, YOUR_PASSWORD);
+            statement = con.createStatement();
 
-        // This is the url you must use for DB2.
-        //Note: This url may not valid now ! Check for the correct year and semester and server name.
-        String url = "jdbc:db2://winter2024-comp421.cs.mcgill.ca:50000/comp421";
+            boolean exit = false;
+            while (!exit) {
+                System.out.println("\n*** MENU ***");
+                System.out.println("1. Create Table");
+                System.out.println("2. Insert Data");
+                System.out.println("3. Query Table");
+                System.out.println("4. Update Table");
+                System.out.println("5. Drop Table");
+                System.out.println("6. Quit");
 
-        //REMEMBER to remove your user id and password before submitting your code!!
-        String your_userid = "cs421g14";
-        String your_password = "v1nylRecord$";
-        //AS AN ALTERNATIVE, you can just set your password in the shell environment in the Unix (as shown below) and read it from there.
-        //$  export SOCSPASSWD=yoursocspasswd
-        if(your_userid == null && (your_userid = System.getenv("SOCSUSER")) == null)
-        {
-            System.err.println("Error!! do not have a password to connect to the database!");
-            System.exit(1);
-        }
-        if(your_password == null && (your_password = System.getenv("SOCSPASSWD")) == null)
-        {
-            System.err.println("Error!! do not have a password to connect to the database!");
-            System.exit(1);
-        }
-        Connection con = DriverManager.getConnection (url,your_userid,your_password) ;
-        Statement statement = con.createStatement ( ) ;
+                System.out.print("\nEnter your choice: ");
+                int choice = getUserInput();
 
-        // Creating a table
-        try
-        {
-            String createSQL = "CREATE TABLE " + tableName + " (id INTEGER, name VARCHAR (25)) ";
-            System.out.println (createSQL ) ;
-            statement.executeUpdate (createSQL ) ;
-            System.out.println ("DONE");
-        }
-        catch (SQLException e)
-        {
-            sqlCode = e.getErrorCode(); // Get SQLCODE
-            sqlState = e.getSQLState(); // Get SQLSTATE
-
-            // Your code to handle errors comes here;
-            // something more meaningful than a print would be good
-            System.out.println("Code: " + sqlCode + "  sqlState: " + sqlState);
-            System.out.println(e);
-        }
-
-        // Inserting Data into the table
-        try
-        {
-            String insertSQL = "INSERT INTO " + tableName + " VALUES ( 1 , \'Vicki\' ) " ;
-            System.out.println ( insertSQL ) ;
-            statement.executeUpdate ( insertSQL ) ;
-            System.out.println ( "DONE" ) ;
-
-            insertSQL = "INSERT INTO " + tableName + " VALUES ( 2 , \'Vera\' ) " ;
-            System.out.println ( insertSQL ) ;
-            statement.executeUpdate ( insertSQL ) ;
-            System.out.println ( "DONE" ) ;
-            insertSQL = "INSERT INTO " + tableName + " VALUES ( 3 , \'Franca\' ) " ;
-            System.out.println ( insertSQL ) ;
-            statement.executeUpdate ( insertSQL ) ;
-            System.out.println ( "DONE" ) ;
-
-        }
-        catch (SQLException e)
-        {
-            sqlCode = e.getErrorCode(); // Get SQLCODE
-            sqlState = e.getSQLState(); // Get SQLSTATE
-
-            // Your code to handle errors comes here;
-            // something more meaningful than a print would be good
-            System.out.println("Code: " + sqlCode + "  sqlState: " + sqlState);
-            System.out.println(e);
-        }
-
-        // Querying a table
-        try
-        {
-            String querySQL = "SELECT id, name from " + tableName + " WHERE NAME = \'Vicki\'";
-            System.out.println (querySQL) ;
-            java.sql.ResultSet rs = statement.executeQuery ( querySQL ) ;
-
-            while ( rs.next ( ) )
-            {
-                int id = rs.getInt ( 1 ) ;
-                String name = rs.getString (2);
-                System.out.println ("id:  " + id);
-                System.out.println ("name:  " + name);
+                switch (choice) {
+                    case 1:
+                        createTable(statement, tableName);
+                        break;
+                    case 2:
+                        insertData(statement, tableName);
+                        break;
+                    case 3:
+                        queryTable(statement, tableName);
+                        break;
+                    case 4:
+                        updateTable(statement, tableName);
+                        break;
+                    case 5:
+                        dropTable(statement, tableName);
+                        break;
+                    case 6:
+                        exit = true;
+                        break;
+                    default:
+                        System.out.println("Invalid choice. Please try again.");
+                }
             }
-            System.out.println ("DONE");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (statement != null) {
+                    statement.close();
+                }
+                if (con != null) {
+                    con.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
-        catch (SQLException e)
-        {
-            sqlCode = e.getErrorCode(); // Get SQLCODE
-            sqlState = e.getSQLState(); // Get SQLSTATE
+    }
 
-            // Your code to handle errors comes here;
-            // something more meaningful than a print would be good
-            System.out.println("Code: " + sqlCode + "  sqlState: " + sqlState);
-            System.out.println(e);
+    private static void createTable(Statement statement, String tableName) throws SQLException {
+        try {
+            String createSQL = "CREATE TABLE " + tableName + " (id INTEGER, name VARCHAR (25)) ";
+            System.out.println(createSQL);
+            statement.executeUpdate(createSQL);
+            System.out.println("Table created successfully.");
+        } catch (SQLException e) {
+            handleSQLException(e);
         }
+    }
 
-        //Updating a table
-        try
-        {
-            String updateSQL = "UPDATE " + tableName + " SET NAME = \'Mimi\' WHERE id = 3";
+    private static void insertData(Statement statement, String tableName) throws SQLException {
+        try {
+            String[] insertSQLs = {
+                    "INSERT INTO " + tableName + " VALUES ( 1 , 'Vicki' )",
+                    "INSERT INTO " + tableName + " VALUES ( 2 , 'Vera' )",
+                    "INSERT INTO " + tableName + " VALUES ( 3 , 'Franca' )"
+            };
+
+            for (String insertSQL : insertSQLs) {
+                System.out.println(insertSQL);
+                statement.executeUpdate(insertSQL);
+                System.out.println("Insertion successful.");
+            }
+        } catch (SQLException e) {
+            handleSQLException(e);
+        }
+    }
+
+    private static void queryTable(Statement statement, String tableName) throws SQLException {
+        try {
+            String querySQL = "SELECT id, name FROM " + tableName + " WHERE NAME = 'Vicki'";
+            System.out.println(querySQL);
+            ResultSet rs = statement.executeQuery(querySQL);
+
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String name = rs.getString("name");
+                System.out.println("id: " + id);
+                System.out.println("name: " + name);
+            }
+            System.out.println("Query successful.");
+        } catch (SQLException e) {
+            handleSQLException(e);
+        }
+    }
+
+    private static void updateTable(Statement statement, String tableName) throws SQLException {
+        try {
+            String updateSQL = "UPDATE " + tableName + " SET NAME = 'Mimi' WHERE id = 3";
             System.out.println(updateSQL);
             statement.executeUpdate(updateSQL);
-            System.out.println("DONE");
+            System.out.println("Update successful.");
+        } catch (SQLException e) {
+            handleSQLException(e);
+        }
+    }
 
-            // Dropping a table
+    private static void dropTable(Statement statement, String tableName) throws SQLException {
+        try {
             String dropSQL = "DROP TABLE " + tableName;
-            System.out.println ( dropSQL ) ;
-            statement.executeUpdate ( dropSQL ) ;
-            System.out.println ("DONE");
+            System.out.println(dropSQL);
+            statement.executeUpdate(dropSQL);
+            System.out.println("Table dropped successfully.");
+        } catch (SQLException e) {
+            handleSQLException(e);
         }
-        catch (SQLException e)
-        {
-            sqlCode = e.getErrorCode(); // Get SQLCODE
-            sqlState = e.getSQLState(); // Get SQLSTATE
+    }
 
-            // Your code to handle errors comes here;
-            // something more meaningful than a print would be good
-            System.out.println("Code: " + sqlCode + "  sqlState: " + sqlState);
-            System.out.println(e);
+
+
+// Other parts of your code...
+
+    private static int getUserInput() {
+        int choice = -1;
+        Scanner scanner = new Scanner(System.in);
+        try {
+            String input = scanner.nextLine().trim(); // Trim leading and trailing whitespace
+            choice = Integer.parseInt(input);
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid input. Please enter a number.");
+        } finally {
+            scanner.close();
         }
-
-        // Finally but importantly close the statement and connection
-        statement.close ( ) ;
-        con.close ( ) ;
+        return choice;
+    }
+    private static void handleSQLException(SQLException e) {
+        int sqlCode = e.getErrorCode();
+        String sqlState = e.getSQLState();
+        System.out.println("Code: " + sqlCode + "  sqlState: " + sqlState);
+        System.out.println(e);
     }
 }

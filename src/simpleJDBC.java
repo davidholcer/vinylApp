@@ -16,6 +16,8 @@ class SimpleJDBC {
             con = DriverManager.getConnection(JDBC_URL, YOUR_USERID, YOUR_PASSWORD);
             statement = con.createStatement();
 
+            System.out.println(tableName);
+
             boolean exit = false;
             while (!exit) {
                 System.out.println("\n*** MENU ***");
@@ -141,16 +143,15 @@ class SimpleJDBC {
 
 // Other parts of your code...
 
+    private static Scanner scanner = new Scanner(System.in);
+
     private static int getUserInput() {
         int choice = -1;
-        Scanner scanner = new Scanner(System.in);
         try {
             String input = scanner.nextLine().trim(); // Trim leading and trailing whitespace
             choice = Integer.parseInt(input);
         } catch (NumberFormatException e) {
             System.out.println("Invalid input. Please enter a number.");
-        } finally {
-            scanner.close();
         }
         return choice;
     }

@@ -48,10 +48,69 @@ class VinylJDBC {
                         String location = getStringInput();
 
                         //create new row in transaction
-                        addTransaction(statement, total, location);
+                        int refNum = addTransaction(statement, total, location);
 
                         //after transaction is added need to update related tables
                         //create transaction items
+                        System.out.println("We will now add the transaction items that make up the transaction.");
+                        System.out.println("Please enter the pID of the first type of product purchased: ");
+                        String pID = getStringInput();
+
+                        //check that the pID exists
+                        if(pidExists(statement, pID)){
+                            //ask user for number of product purchased
+                            System.out.println("Please enter the amount of the product purchased");
+                            int quantity = getIntInput();
+                            if(quantity < 0){
+                                System.out.println("Invalid quantity entered. Please enter positive integer only.");
+                                break;
+                            }
+
+                            //now update the 'is' table and the 'transaction item' table
+                            updateTransactionItem(statement, pID, quantity, refNum);
+
+                            System.out.println("Would you like to add another transaction item to the transaction? (Y/N)");
+                            String yesNO = getStringInput();
+
+                            while(yesNO.equals("'Y'")){
+                                System.out.println("Please enter the pID of the next type of product purchased: ");
+                                pID = getStringInput();
+
+                                //check that the pID exists
+                                if(!pidExists(statement, pID)){
+                                    System.out.println("pID does not exist.");
+                                    break;
+                                }
+                                //ask user for number of product purchased
+                                System.out.println("Please enter the amount of the product purchased");
+                                quantity = getIntInput();
+                                if(quantity < 0){
+                                    System.out.println("Invalid quantity entered. Please enter positive integer only.");
+                                    break;
+                                }
+
+                                //now update the 'is' table and the 'transaction item' table
+                                updateTransactionItem(statement, pID, quantity, refNum);
+
+                                System.out.println("Would you like to add another transaction item to the transaction? (Y/N)");
+                                yesNO = getStringInput();
+                            }
+
+                            if (yesNO.equals("'N'")){
+                                System.out.println("Please enter the employee ID that completed the transaction.");
+                                String eID = getStringInput();
+                                if(!employeeExists(statement, eID)){
+                                    //if employee does not exist
+                                    break;
+                                }
+                                //otherwise add to completed table
+                                addCompletedEmp(statement, refNum, eID);
+
+                            } else {
+                                System.out.println("Not a valid input.");
+                                break;
+                            }
+                        }
 
                         //update contains
 
@@ -181,6 +240,17 @@ class VinylJDBC {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    private static void addCompletedEmp(Statement statement, int refNum, String eID){
+        String query = "INSERT INTO completed VALUES (%d, %s);";
+        query = String.format(query, refNum, eID);
+
+        try {
+            statement.executeUpdate(query);
+        } catch (Exception e) {
+            System.out.println("Error: failed to add to 'Completed' table");
         }
     }
 
@@ -356,7 +426,7 @@ class VinylJDBC {
         }
     }
 
-    private static void addTransaction(Statement statement, double total, String location){
+    private static int addTransaction(Statement statement, double total, String location){
         //get date and time for the transaction
         LocalDate txnDate = LocalDate.now();
         LocalTime txnTime = LocalTime.now();
@@ -376,8 +446,90 @@ class VinylJDBC {
         try {
             statement.executeUpdate(query);
         } catch (Exception e) {
-            e.printStackTrace();
             System.out.println("Error: failed to add transaction to Transaction table");
+        }
+
+        return referenceNum;
+    }
+
+    private static boolean employeeExists(Statement statement, String eID){
+        String query = ("SELECT * FROM Employee WHERE eID = %s;");
+        query = String.format(query, eID);
+        try {
+            ResultSet rs = statement.executeQuery(query);
+            if(!rs.next()){
+                //then there are no rows so pID provided does not exist
+                System.out.println("Employee does not exist.");
+                return false;
+            } else {
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error: failed to query pIDs in Product table");
+            return false;
+        }
+    }
+
+    private static boolean pidExists(Statement statement, String pid){
+        String query = ("SELECT * FROM Product WHERE pID = %s;");
+        query = String.format(query, pid);
+        try {
+            ResultSet rs = statement.executeQuery(query);
+            if(!rs.next()){
+                //then there are no rows so pID provided does not exist
+                return false;
+            } else {
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error: failed to query pIDs in Product table");
+            return false;
+        }
+    }
+
+    private static void updateTransactionItem(Statement statement, String pID, int quantity, int refNum){
+        //get a random tID
+        Random random = new Random();
+        // Generate a random 4-digit integer
+        int tID = random.nextInt(9000) + 1000;
+
+        //first create a new transaction item row
+        String query1 = "INSERT INTO Transaction_Item VALUES ('%s', %d)";
+        query1 = String.format(query1, String.valueOf(tID), quantity);
+
+        try {
+            statement.executeUpdate(query1);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error: failed to add transaction item.");
+            return;
+        }
+
+        //now we need to update the IS table
+        String query2 = "INSERT INTO is VALUES('%s', %s);";
+        query2 = String.format(query2, tID, pID);
+        try {
+            statement.executeUpdate(query2);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error: failed to add to 'is' table.");
+            return;
+        }
+
+        //now update the Contains table
+        String query3 = "INSERT INTO Contains VALUES('%s', %d);";
+        query3 = String.format(query3, tID, refNum);
+        try {
+            statement.executeUpdate(query3);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error: failed to add to 'Contains' table.");
+            return;
         }
     }
 

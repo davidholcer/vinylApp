@@ -22,21 +22,39 @@ class SimpleJDBC {
             while (!exit) {
                 System.out.println("\n*** MENU ***");
                 System.out.println("1. Create Table");
-                System.out.println("2. Insert Data");
+                System.out.println("2. Create a Customer Account");
                 System.out.println("3. Query Table");
                 System.out.println("4. Update Table");
                 System.out.println("5. Drop Table");
                 System.out.println("6. Quit");
 
                 System.out.print("\nEnter your choice: ");
-                int choice = getUserInput();
+                int choice = getIntInput();
 
                 switch (choice) {
                     case 1:
                         createTable(statement, tableName);
                         break;
                     case 2:
-                        insertData(statement, tableName);
+                        System.out.println("Please enter your email:");
+                        String email = getStringInput();
+
+                        System.out.println("Please enter your address:");
+                        String address = getStringInput();
+
+                        System.out.println("Please enter your first name:");
+                        String fName = getStringInput();
+
+                        System.out.println("Please enter your last name:");
+                        String lName = getStringInput();
+
+                        System.out.println("Please enter your phone number:");
+                        String phoneNum = getStringInput();
+
+                        System.out.println("Please enter your loyalty points:");
+                        int loyaltyPoints = getIntInput();
+
+                        enterUser(statement, "Customer_Account",email,address,fName,lName,phoneNum,loyaltyPoints);
                         break;
                     case 3:
                         queryTable(statement, tableName);
@@ -81,19 +99,14 @@ class SimpleJDBC {
         }
     }
 
-    private static void insertData(Statement statement, String tableName) throws SQLException {
+    private static void enterUser(Statement statement, String tableName, String email, String address, String fName, String lName, String phoneNum, int loyaltyPoints) throws SQLException {
+//        INSERT INTO Customer_Account (email, address, FName, LName, phoneNum, loyaltyPoints) VALUES
         try {
-            String[] insertSQLs = {
-                    "INSERT INTO " + tableName + " VALUES ( 1 , 'Vicki' )",
-                    "INSERT INTO " + tableName + " VALUES ( 2 , 'Vera' )",
-                    "INSERT INTO " + tableName + " VALUES ( 3 , 'Franca' )"
-            };
+            String insertSQL = "INSERT INTO " + tableName + " VALUES (" + email +","+ address+","+ fName+","+ lName+","+ phoneNum + "," + loyaltyPoints + ")";
+            System.out.println(insertSQL);
+            statement.executeUpdate(insertSQL);
+            System.out.println("Insertion successful.");
 
-            for (String insertSQL : insertSQLs) {
-                System.out.println(insertSQL);
-                statement.executeUpdate(insertSQL);
-                System.out.println("Insertion successful.");
-            }
         } catch (SQLException e) {
             handleSQLException(e);
         }
@@ -139,13 +152,24 @@ class SimpleJDBC {
         }
     }
 
-
-
 // Other parts of your code...
 
     private static Scanner scanner = new Scanner(System.in);
 
-    private static int getUserInput() {
+
+
+    private static String getStringInput() {
+        String input = "";
+        try {
+            input = scanner.nextLine().trim(); // Trim leading and trailing whitespace
+        } catch (Exception e) {
+            System.out.println("An error occurred while reading input.");
+        }
+        return "'" + input + "'";
+    }
+
+
+    private static int getIntInput() {
         int choice = -1;
         try {
             String input = scanner.nextLine().trim(); // Trim leading and trailing whitespace

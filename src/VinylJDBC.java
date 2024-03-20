@@ -1,5 +1,10 @@
 import java.sql.*;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Random;
 import java.util.Scanner;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 class VinylJDBC {
     private static final String JDBC_URL = "jdbc:db2://winter2024-comp421.cs.mcgill.ca:50000/comp421";
@@ -21,10 +26,10 @@ class VinylJDBC {
             boolean exit = false;
             while (!exit) {
                 System.out.println("\n*** MENU ***");
-                System.out.println("1. Create Table");
+                System.out.println("1. Enter a New Transaction");
                 System.out.println("2. Create a Customer Account");
                 System.out.println("3. Search for Vinyls by Genre, Artist");
-                System.out.println("4. Update Table");
+                System.out.println("4. Add Discount to Products of a Specific Distributor");
                 System.out.println("5. Find all transactions within the last month by Employee ID");
                 System.out.println("6. Quit");
 
@@ -33,7 +38,28 @@ class VinylJDBC {
 
                 switch (choice) {
                     case 1:
-                        createTable(statement, tableName);
+                        //get the required fields for a transaction
+
+                        System.out.println("Enter transaction total: ");
+                        double total = getDoubleInput();
+
+                        //get location
+                        System.out.println("Please enter store location of transaction: ");
+                        String location = getStringInput();
+
+                        //create new row in transaction
+                        addTransaction(statement, total, location);
+
+                        //after transaction is added need to update related tables
+                        //create transaction items
+
+                        //update contains
+
+                        //update completed (ask which employee did the transaction)
+
+                        //ask if customer has customer account
+
+                        //create new transaction method and update paidWith
                         break;
                     case 2:
                         System.out.println("Please enter your email:");
@@ -82,7 +108,44 @@ class VinylJDBC {
                         searchVinyl(statement, tableName, gName, aName);
                         break;
                     case 4:
-                        updateTable(statement, tableName);
+                        System.out.println("Please select the distributor whose products you wish to add a discount to:");
+                        //print the valid distributors
+                        ResultSet distributors = getDistributors(statement);
+                        if(distributors == null){
+                            //error
+                            break;
+                        }
+                        int i = 1;
+                        //store the dIDs into a list to be able to index it
+                        ArrayList<String> dIDs = new ArrayList<>();
+                        while(distributors.next()){
+                            String id = distributors.getString("dID");
+                            String name = distributors.getString("Name");
+                            dIDs.add(id);
+                            System.out.println(i + ") ID: " + id + ", Name: " + name);
+                            i++;
+                        }
+
+                        //get user input
+                        int distChoice = getIntInput();
+
+                        if(distChoice < 1 || distChoice >= i){
+                            System.out.println("That is an invalid choice.");
+                            break;
+                        }
+
+                        //otherwise it is okay
+                        //now ask user for discount
+                        System.out.println("Please enter the discount to apply to the products as a percentage (Please enter an integer from 0 to 100):");
+                        int discount = getIntInput();
+                        if (discount < 0 || discount >100){
+                            System.out.println("Invalid discount value");
+                            break;
+                        }
+
+                        //otherwise it is fine
+                        //now we need to update all rows in the product table
+                        updateDiscount(statement, (double) discount / 100, dIDs.get(distChoice-1));
                         break;
                     case 5:
                         System.out.println("Please enter today's date as YYYY-MM-DD:");
@@ -258,6 +321,66 @@ class VinylJDBC {
         }
     }
 
+    private static ResultSet getDistributors(Statement statement){
+        String query = "SELECT * FROM Distributor;";
+        try {
+            ResultSet rs = statement.executeQuery(query);
+            return rs;
+        } catch (Exception e){
+            System.out.println("Error: execution of query failed.");
+        }
+        return null;
+    }
+
+    private static void updateDiscount(Statement statement, double discount, String dID){
+        String query = """
+                UPDATE Product 
+                SET Discount = 
+                    (CASE 
+                        WHEN Discount + %.2f > 1 THEN 1 
+                        ELSE Discount + %.2f 
+                     END)
+                WHERE pID IN (SELECT pID FROM distributedBy WHERE dID = '%s');
+                """;
+
+        //inject values
+        query = String.format(query, discount, discount, dID);
+
+
+        try{
+            statement.executeUpdate(query);
+            System.out.println("The discount has successfully been applied");
+        } catch (Exception e){
+            //e.printStackTrace();
+            System.out.println("Error: SQL query failed to execute to update discount.");
+        }
+    }
+
+    private static void addTransaction(Statement statement, double total, String location){
+        //get date and time for the transaction
+        LocalDate txnDate = LocalDate.now();
+        LocalTime txnTime = LocalTime.now();
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+        String date = txnDate.format(dateFormatter);
+        String time = txnTime.format(timeFormatter);
+
+        // Create a Random object to create unique reference number
+        Random random = new Random();
+        // Generate a random 10-digit integer
+        int referenceNum = random.nextInt(9000) + 1000;
+        String query = "INSERT INTO Transaction VALUES (%d, %.2f, '%s', '%s', %s);";
+        query = String.format(query, referenceNum, total, date, time, location);
+
+        try {
+            statement.executeUpdate(query);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error: failed to add transaction to Transaction table");
+        }
+    }
+
 // Other parts of your code...
 
     private static Scanner scanner = new Scanner(System.in);
@@ -285,6 +408,18 @@ class VinylJDBC {
         }
         return choice;
     }
+
+    private static double getDoubleInput() {
+        double choice = -1.0; // Initialize choice with a default value
+        try {
+            String input = scanner.nextLine().trim(); // Trim leading and trailing whitespace
+            choice = Double.parseDouble(input);
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid input. Please enter a number.");
+        }
+        return choice;
+    }
+
     private static void handleSQLException(SQLException e) {
         int sqlCode = e.getErrorCode();
         String sqlState = e.getSQLState();

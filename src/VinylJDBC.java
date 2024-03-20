@@ -106,6 +106,9 @@ class VinylJDBC {
                                 //otherwise add to completed table
                                 addCompletedEmp(statement, refNum, eID);
 
+                                System.out.println("Transaction added successfully!");
+
+
                             } else {
                                 System.out.println("Not a valid input.");
                                 break;
@@ -477,6 +480,7 @@ class VinylJDBC {
         try {
             ResultSet rs = statement.executeQuery(query);
             if(!rs.next()){
+                System.out.println("pID does not exist.");
                 //then there are no rows so pID provided does not exist
                 return false;
             } else {

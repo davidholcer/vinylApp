@@ -106,6 +106,39 @@ class VinylJDBC {
                                 //otherwise add to completed table
                                 addCompletedEmp(statement, refNum, eID);
 
+                                System.out.println("Does the costumer have a registered account? (Y/N)");
+                                String hasAccount = getStringInput();
+                                if(hasAccount.equals("'Y'")){
+                                    System.out.println("Please enter the email address registered on the customers account:");
+                                    String email = getStringInput();
+                                    addAssociatedWith(statement, email, refNum);
+                                } else if (!hasAccount.equals("'N'")) {
+                                    System.out.println("Invalid input.");
+                                    break;
+                                }
+
+                                System.out.println("Has customer used points to pay for transaction? (Y/N):");
+                                String usedPoints = getStringInput();
+                                if(usedPoints.equals("'Y'")){
+                                    System.out.println("Please enter the amount paid by points: ");
+                                    double numPoints = getDoubleInput();
+                                    addPointsTM(statement, numPoints, refNum);
+                                } else if (!usedPoints.equals("'N'")) {
+                                    System.out.println("Invalid input.");
+                                }
+
+                                System.out.println("Has customer used their card to pay for transaction? (Y/N):");
+                                String usedCard = getStringInput();
+                                if(usedPoints.equals("'Y'")){
+                                    System.out.println("Please enter the amount paid by the card: ");
+                                    double numPoints = getDoubleInput();
+                                    System.out.println("Please enter the card number: ");
+                                    String cardNum = getStringInput();
+                                    addCardTM(statement, cardNum, numPoints, refNum);
+                                } else if (!usedPoints.equals("'N'")) {
+                                    System.out.println("Invalid input.");
+                                }
+
                                 System.out.println("Transaction added successfully!");
 
 
@@ -114,12 +147,6 @@ class VinylJDBC {
                                 break;
                             }
                         }
-
-                        //update contains
-
-                        //update completed (ask which employee did the transaction)
-
-                        //ask if customer has customer account
 
                         //create new transaction method and update paidWith
                         break;
@@ -535,6 +562,85 @@ class VinylJDBC {
             System.out.println("Error: failed to add to 'Contains' table.");
             return;
         }
+    }
+
+    private static void addAssociatedWith(Statement statement, String email, int refNum){
+        //first check that the account exists
+        String query = ("SELECT * FROM Customer_Account WHERE email = %s;");
+        query = String.format(query, email);
+        try {
+            ResultSet rs = statement.executeQuery(query);
+            if(!rs.next()){
+                System.out.println("Costumer account does not exist.");
+                //then there are no rows
+                return;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error: failed to query Customer Account.");
+            return;
+        }
+
+        //if exists then add row
+        String query2 = "INSERT INTO associatedWith VALUES(%d, %s);";
+        query2 = String.format(query2, refNum, email);
+
+        try{
+            statement.executeUpdate(query2);
+        } catch (Exception e) {
+            System.out.println("Error: Failed to update associatedWith table.");
+            e.printStackTrace();
+        }
+    }
+
+    private static void addPointsTM(Statement statement, double numPoints, int refNum){
+        Random random = new Random();
+        // Generate a random 5-digit integer
+        int tmID = random.nextInt(90000) + 10000;
+        String query = "INSERT INTO Transaction_Method VALUES ('%s', %.2f);";
+        query = String.format(query, String.valueOf(tmID), numPoints);
+
+        String query2 = "INSERT INTO Points VALUES ('%s');";
+        query2 = String.format(query2, String.valueOf(tmID));
+
+        String query3 = "INSERT INTO paidWith VALUES ('%s', %d);";
+        query3 = String.format(query3, String.valueOf(tmID), refNum);
+
+        try {
+            statement.executeUpdate(query);
+            statement.executeUpdate(query2);
+            statement.executeUpdate(query3);
+        } catch (Exception e) {
+            System.out.println("Error: failed to add Points as a Transaction Method.");
+            e.printStackTrace();
+        }
+
+    }
+
+    private static void addCardTM(Statement statement, String cardNum, double num, int refNum){
+        Random random = new Random();
+        // Generate a random 5-digit integer
+        int tmID = random.nextInt(90000) + 10000;
+        String query = "INSERT INTO Transaction_Method VALUES ('%s', %.2f);";
+        query = String.format(query, String.valueOf(tmID), num);
+
+        String query2 = "INSERT INTO Card_Payment VALUES ('%s', %s);";
+        query2 = String.format(query2, String.valueOf(tmID), cardNum);
+
+        String query3 = "INSERT INTO paidWith VALUES ('%s', %d);";
+        query3 = String.format(query3, String.valueOf(tmID), refNum);
+
+
+        try {
+            statement.executeUpdate(query);
+            statement.executeUpdate(query2);
+            statement.executeUpdate(query3);
+        } catch (Exception e) {
+            System.out.println("Error: failed to add Card Payment as a Transaction Method.");
+            e.printStackTrace();
+        }
+
     }
 
 // Other parts of your code...
